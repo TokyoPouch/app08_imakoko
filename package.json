@@ -1,0 +1,12 @@
+{
+  "name": "app06-imakoko",
+  "version": "2.0.0",
+  "description": "いまここ手帳 β — Future Me | 好きを忘れないAI",
+  "type": "module",
+  "dependencies": {
+    "@google/genai": "^1.3.0"
+  },
+  "engines": {
+    "node": ">=18.x"
+  }
+}

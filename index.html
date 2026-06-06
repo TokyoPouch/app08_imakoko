@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>いまここ手帳 β — Future Me | 好きを忘れないAI</title>
+  <meta name="description" content="写真・URL・メモなどの記録をもとに、積み重なった自分と、もう一度つながるためのログアプリ。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #fff8ef;
+      --card: #fffdf8;
+      --navy: #10243f;
+      --pink: #ff5c93;
+      --mint: #76d8d3;
+      --yellow-pale: #fffbe8;
+      --blue-pale: #e8f4ff;
+      --purple-pale: #f0ebff;
+      --border: #e8ddd0;
+      --text-sub: #7a6e63;
+      --radius: 12px;
+      --nav-h: 68px;
+    }
+    html, body {
+      height: 100%;
+      font-family: 'Noto Sans JP', sans-serif;
+      background: var(--bg);
+      color: var(--navy);
+      overflow-x: hidden;
+    }
+
+    /* ===== APP SHELL ===== */
+    #app {
+      max-width: 430px;
+      margin: 0 auto;
+      min-height: 100vh;
+      position: relative;
+      background: var(--bg);
+    }
+
+    /* ===== SCREENS ===== */
+    .screen { display: none; flex-direction: column; min-height: 100vh; padding-bottom: calc(var(--nav-h) + 8px); }
+    .screen.active { display: flex; }
+
+    /* ===== HEADER ===== */
+    header {
+      background: #fff8ef;
+      padding: 28px 24px 0;
+      position: relative;
+      border-bottom: 1px solid var(--border);
+    }
+    .header-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .header-logo-block { flex: 1; }
+    .header-logo-img {
+      width: 240px;
+      height: auto;
+      display: block;
+      max-width: 100%;
+    }
+
+    /* 記録するボタン (右上) */
+    .btn-record-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      background: #ffeef4;
+      border: none;
+      border-radius: 50%;
+      width: 82px;
+      height: 82px;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(255,90,140,0.15), 0 1px 4px rgba(255,90,140,0.10);
+    }
+    .btn-record-header:hover { background: #ffd6e7; transform: scale(1.05); }
+    .btn-record-header svg { display: block; }
+    .btn-record-header span { font-size: 10px; color: #d63b75; font-weight: 600; letter-spacing: 0.04em; }
+
+    /* 街並み帯 */
+    .cityscape {
+      margin-top: 8px;
+      width: 100%;
+    }
+    .cityscape-img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* ===== SECTION LABEL ===== */
+    .section-label {
+      padding: 14px 20px 6px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--pink);
+      letter-spacing: 0.1em;
+    }
+
+    /* ===== TIMELINE ===== */
+    .timeline-wrap { padding: 0 20px 20px; position: relative; }
+    .timeline-line {
+      position: absolute;
+      left: 32px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--pink), var(--mint));
+      opacity: 0.35;
+      border-radius: 2px;
+    }
+    .timeline-item { position: relative; padding-left: 28px; margin-bottom: 28px; }
+    .timeline-dot {
+      position: absolute;
+      left: -6px;
+      top: 6px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--pink);
+      border: 2.5px solid var(--bg);
+      box-shadow: 0 0 0 2px rgba(255,92,147,0.25);
+    }
+    .timeline-date { margin-bottom: 8px; }
+    .timeline-date .year { font-size: 11px; color: var(--text-sub); font-weight: 500; letter-spacing: 0.1em; }
+    .timeline-date .day { font-size: 22px; font-weight: 700; color: var(--navy); letter-spacing: -0.5px; }
+    .timeline-date .weekday { font-size: 12px; color: var(--text-sub); margin-left: 4px; }
+
+    /* タイムラインカード */
+    .tl-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(16,36,63,0.06);
+    }
+    .tl-card-photo { width: 100%; max-height: 180px; object-fit: cover; display: block; }
+    .tl-card-body { padding: 12px 14px; }
+    .tl-card-meta { display: flex; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+    .tl-meta-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-sub); }
+    .tl-meta-item svg { flex-shrink: 0; }
+    .tl-card-memo { font-size: 13px; color: var(--navy); line-height: 1.6; margin-bottom: 4px; }
+    .tl-card-url a { font-size: 12px; color: var(--mint); text-decoration: none; word-break: break-all; }
+    .tl-card-url a:hover { text-decoration: underline; }
+
+    /* Future Me コメント */
+    .future-me-box {
+      margin-top: 8px;
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .future-me-box.yellow { background: var(--yellow-pale); border: 1px solid #f0e4a0; }
+    .future-me-box.blue   { background: var(--blue-pale);   border: 1px solid #b8d8f8; }
+    .future-me-box.purple { background: var(--purple-pale); border: 1px solid #d0c0f8; }
+    .future-me-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      overflow: hidden;
+      border: 1px solid #ddd;
+      background: #fff url('future_me.png') center/cover no-repeat;
+    }
+    .future-me-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    /* 線画SVGアバター—future_me.pngで上書きのため非表示 */
+    .future-me-avatar svg { display: none; }
+    .future-me-content { flex: 1; }
+    .future-me-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--pink);
+      letter-spacing: 0.1em;
+      margin-bottom: 4px;
+    }
+    .future-me-text { font-size: 13px; color: var(--navy); line-height: 1.7; }
+
+    /* ===== あれなんだっけバナー ===== */
+    .arenandakke-banner {
+      margin: 4px 20px 16px;
+      background: #fff;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      cursor: pointer;
+      transition: box-shadow 0.2s, transform 0.15s;
+      text-decoration: none;
+    }
+    .arenandakke-banner:hover { box-shadow: 0 4px 16px rgba(16,36,63,0.1); transform: translateY(-1px); }
+    .arenandakke-img {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 2px solid var(--border);
+    }
+    .arenandakke-text h3 { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 2px; }
+    .arenandakke-text p { font-size: 12px; color: var(--text-sub); line-height: 1.5; }
+    .arenandakke-open {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--mint);
+      border: 1px solid var(--mint);
+      border-radius: 20px;
+      padding: 4px 10px;
+      white-space: nowrap;
+    }
+
+    /* ===== 記録画面 ===== */
+    .record-header {
+      background: #fdf6ee;
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .record-header h2 { font-size: 18px; font-weight: 700; color: var(--navy); }
+    .record-body { padding: 20px; flex: 1; }
+    .form-group { margin-bottom: 18px; }
+    .form-label { font-size: 12px; font-weight: 700; color: var(--text-sub); letter-spacing: 0.1em; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+    .form-input {
+      width: 100%;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: 'Noto Sans JP', sans-serif;
+      background: var(--card);
+      color: var(--navy);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus { border-color: var(--pink); }
+    textarea.form-input { resize: vertical; min-height: 80px; }
+    .photo-preview-wrap { margin-top: 8px; }
+    .photo-preview { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; display: none; }
+    .photo-preview.show { display: block; }
+    .photo-label-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1.5px dashed var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-sub);
+      background: var(--card);
+      transition: border-color 0.2s;
+    }
+    .photo-label-btn:hover { border-color: var(--pink); }
+    #photo-input { display: none; }
+    .photo-warning {
+      margin-top: 8px;
+      padding: 10px 12px;
+      background: #fff8e6;
+      border: 1.5px solid #f5c842;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #7a5800;
+      line-height: 1.6;
+      display: none;
+    }
+    .photo-warning.show { display: block; }
+    .save-error {
+      text-align: center;
+      color: #d93b3b;
+      font-size: 13px;
+      margin-top: 10px;
+      opacity: 0;
+      transition: opacity 0.4s;
+    }
+    .save-error.show { opacity: 1; }
+
+    .btn-save {
+      width: 100%;
+      background: var(--pink);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 15px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: 'Noto Sans JP', sans-serif;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: opacity 0.2s, transform 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-save:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-save:active { transform: translateY(0); }
+    .save-success {
+      text-align: center;
+      color: var(--mint);
+      font-size: 13px;
+      margin-top: 10px;
+      opacity: 0;
+      transition: opacity 0.4s;
+    }
+    .save-success.show { opacity: 1; }
+
+    /* ===== 設定画面 ===== */
+    .settings-header {
+      background: #fdf6ee;
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .settings-header h2 { font-size: 18px; font-weight: 700; }
+    .settings-body { padding: 20px; }
+    .settings-section { margin-bottom: 24px; }
+    .settings-section h3 { font-size: 12px; font-weight: 700; color: var(--text-sub); letter-spacing: 0.1em; margin-bottom: 10px; }
+    .settings-btn {
+      width: 100%;
+      border-radius: 10px;
+      padding: 13px;
+      font-size: 14px;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1.5px solid var(--border);
+      background: var(--card);
+      color: var(--navy);
+      margin-bottom: 8px;
+      transition: background 0.2s, border-color 0.2s;
+      text-align: left;
+    }
+    .settings-btn:hover { background: #fff3ea; border-color: var(--pink); }
+    .settings-btn.danger { color: #d93b3b; border-color: #f0c0c0; }
+    .settings-btn.danger:hover { background: #fff0f0; border-color: #d93b3b; }
+    .settings-desc { font-size: 12px; color: var(--text-sub); line-height: 1.6; margin-top: 12px; }
+
+    /* ===== 下部ナビ ===== */
+    nav#bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 430px;
+      height: var(--nav-h);
+      background: #fdf6ee;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      z-index: 100;
+      padding: 0 8px;
+    }
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      cursor: pointer;
+      flex: 1;
+      padding: 6px 0;
+      text-decoration: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .nav-item svg { transition: stroke 0.2s; }
+    .nav-item span { font-size: 9.5px; color: var(--navy); opacity: 0.5; transition: color 0.2s, opacity 0.2s; font-weight: 500; }
+    .nav-item.active span { color: var(--pink); opacity: 1; }
+    .nav-item.active svg { stroke: var(--pink) !important; }
+    .nav-item-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      cursor: pointer;
+      flex: 1;
+    }
+    .nav-center-btn {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: rgba(255,92,147,0.1);
+      border: 2px solid var(--pink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(255,92,147,0.2);
+      transition: background 0.2s, transform 0.15s;
+      margin-top: -14px;
+    }
+    .nav-center-btn:hover { background: rgba(255,92,147,0.2); transform: scale(1.05); }
+    .nav-center-btn.active-nav { background: rgba(255,92,147,0.25); }
+    .nav-center-label { font-size: 9.5px; color: var(--navy); opacity: 0.5; font-weight: 500; }
+    .nav-center-label.active { color: var(--pink); opacity: 1; }
+
+    /* あれなんだっけナビアイコン */
+    .nav-comic-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1.5px solid var(--border);
+    }
+
+    /* ===== 空状態 ===== */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-sub);
+    }
+    .empty-state svg { opacity: 0.35; margin-bottom: 16px; }
+    .empty-state p { font-size: 14px; line-height: 1.8; }
+
+    /* ===== TOAST ===== */
+    #toast {
+      position: fixed;
+      bottom: calc(var(--nav-h) + 16px);
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--navy);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 13px;
+      opacity: 0;
+      transition: opacity 0.3s, transform 0.3s;
+      z-index: 200;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ===== メモリーエリア ===== */
+    .memory-area {
+      margin: 0 20px 8px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px 10px;
+    }
+    .memory-area-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--pink);
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .memory-list {
+      list-style: none;
+      margin-bottom: 10px;
+      min-height: 18px;
+    }
+    .memory-item {
+      font-size: 12px;
+      color: var(--navy);
+      line-height: 1.7;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .memory-item::before { content: '・'; color: var(--pink); font-weight: 700; }
+    .memory-empty {
+      font-size: 12px;
+      color: var(--text-sub);
+      font-style: italic;
+    }
+    .btn-organize-memory {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-weight: 600;
+      color: var(--navy);
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+    }
+    .btn-organize-memory:hover { background: #fff3ea; border-color: var(--pink); color: var(--pink); }
+    .btn-organize-memory:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ===== フィードバックUI ===== */
+    .fm-feedback-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .fm-feedback-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(255,255,255,0.7);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-family: 'Noto Sans JP', sans-serif;
+      color: var(--navy);
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, transform 0.1s;
+    }
+    .fm-feedback-btn:hover { background: #fff; transform: translateY(-1px); }
+    .fm-feedback-btn.selected-good { background: #e8fff0; border-color: #5dcc8a; color: #2a7a4a; }
+    .fm-feedback-btn.selected-miss { background: #fff5e0; border-color: #f0b429; color: #8a5e00; }
+    .fm-miss-reasons {
+      margin-top: 8px;
+      display: none;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .fm-miss-reasons.show { display: flex; }
+    .fm-miss-label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--text-sub);
+      cursor: pointer;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 4px 10px;
+      transition: background 0.15s, border-color 0.15s;
+      user-select: none;
+    }
+    .fm-miss-label:hover { background: #fff3ea; border-color: var(--pink); }
+    .fm-miss-label input[type=checkbox] { display: none; }
+    .fm-miss-label.checked { background: #ffeef4; border-color: var(--pink); color: var(--pink); font-weight: 600; }
+    .fm-reason-submit {
+      margin-top: 6px;
+      width: 100%;
+      background: none;
+      border: none;
+      font-size: 11px;
+      color: var(--text-sub);
+      cursor: pointer;
+      text-align: left;
+      padding: 2px 0;
+      text-decoration: underline;
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+    .fm-reason-submit:hover { color: var(--navy); }
+    .fm-feedback-done {
+      font-size: 11px;
+      color: var(--text-sub);
+      margin-top: 6px;
+      display: none;
+    }
+    .fm-feedback-done.show { display: block; }
+
+    /* ===== スクロール ===== */
+    .screen { overflow-y: auto; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ========== SCREEN: TIMELINE ========== -->
+  <div id="screen-timeline" class="screen active">
+
+    <!-- HEADER -->
+    <header>
+      <div class="header-inner">
+        <!-- 左上：ロゴ画像 -->
+        <div class="header-logo-block">
+          <img
+            src="imakoko_logo.png"
+            alt="いまここ手帳"
+            class="header-logo-img"
+          />
+        </div>
+        <!-- 右上：丸い📼記録するボタン -->
+        <button class="btn-record-header" onclick="goTo('record')" aria-label="記録する">
+          <!-- カセットテープ SVG -->
+          <svg width="32" height="22" viewBox="0 0 32 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="1" y="1" width="30" height="20" rx="3" stroke="#e05080" stroke-width="1.5"/>
+            <circle cx="9" cy="11" r="4" stroke="#e05080" stroke-width="1.2"/>
+            <circle cx="23" cy="11" r="4" stroke="#e05080" stroke-width="1.2"/>
+            <circle cx="9" cy="11" r="1.5" fill="#e05080"/>
+            <circle cx="23" cy="11" r="1.5" fill="#e05080"/>
+            <line x1="13" y1="11" x2="19" y2="11" stroke="#e05080" stroke-width="1.2"/>
+            <line x1="4" y1="16" x2="28" y2="16" stroke="#e05080" stroke-width="1"/>
+          </svg>
+          <span>記録する</span>
+        </button>
+      </div>
+
+      <!-- 街並み帯 (画像) -->
+      <div class="cityscape">
+        <img
+          src="Header_image.png"
+          alt="街並み"
+          class="cityscape-img"
+        />
+      </div>
+    </header>
+
+    <!-- TIMELINE LABEL -->
+    <div class="section-label">タイムライン</div>
+
+    <!-- Future Meメモリーエリア -->
+    <div class="memory-area" id="memory-area">
+      <div class="memory-area-title">🧠 Future Meが覚えていること</div>
+      <ul class="memory-list" id="memory-list">
+        <li class="memory-empty">まだ記憶がありません。記録を積み重ねて「記憶を整理する」を押してみましょう。</li>
+      </ul>
+      <button class="btn-organize-memory" id="btn-organize-memory" onclick="organizeMemory()">
+        🧠 記憶を整理する
+      </button>
+    </div>
+
+    <!-- TIMELINE -->
+    <div class="timeline-wrap" id="timeline-container">
+      <div class="timeline-line"></div>
+      <!-- JS で描画 -->
+      <div class="empty-state" id="empty-state" style="display:none;">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="8" y="6" width="32" height="36" rx="4" stroke="#10243f" stroke-width="1.5"/>
+          <line x1="16" y1="18" x2="32" y2="18" stroke="#10243f" stroke-width="1.5"/>
+          <line x1="16" y1="24" x2="28" y2="24" stroke="#10243f" stroke-width="1.5"/>
+          <line x1="16" y1="30" x2="24" y2="30" stroke="#10243f" stroke-width="1.5"/>
+        </svg>
+        <p>まだ記録がありません。<br/>📼 記録するボタンから<br/>最初の一枚を残しましょう。</p>
+      </div>
+    </div>
+
+    <!-- あれなんだっけバナー -->
+    <a href="https://app02-two.vercel.app/" target="_blank" rel="noopener" class="arenandakke-banner" id="arenandakke-banner">
+      <img src="arenandakke.png" alt="あれなんだっけ？" class="arenandakke-img" onerror="this.style.display='none'" />
+      <div class="arenandakke-text">
+        <h3>あれなんだっけ？</h3>
+        <p>思い出せないことをサポートするアプリ</p>
+      </div>
+      <span class="arenandakke-open">開く ↗</span>
+    </a>
+
+  </div><!-- /screen-timeline -->
+
+  <!-- ========== SCREEN: RECORD ========== -->
+  <div id="screen-record" class="screen">
+    <div class="record-header">
+      <button onclick="goTo('timeline')" style="background:none;border:none;cursor:pointer;padding:4px;">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M14 17L8 11L14 5" stroke="#10243f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <h2>記録する</h2>
+    </div>
+    <div class="record-body">
+      <!-- 日付 -->
+      <div class="form-group">
+        <label class="form-label" for="record-date">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="2" width="12" height="11" rx="1.5" stroke="#7a6e63" stroke-width="1.2"/><line x1="4" y1="1" x2="4" y2="3" stroke="#7a6e63" stroke-width="1.2" stroke-linecap="round"/><line x1="10" y1="1" x2="10" y2="3" stroke="#7a6e63" stroke-width="1.2" stroke-linecap="round"/><line x1="1" y1="6" x2="13" y2="6" stroke="#7a6e63" stroke-width="1.1"/></svg>
+          日付
+        </label>
+        <input type="date" id="record-date" class="form-input" />
+      </div>
+      <!-- 写真 -->
+      <div class="form-group">
+        <div class="form-label">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="2.5" width="12" height="9.5" rx="1.5" stroke="#7a6e63" stroke-width="1.2"/><circle cx="7" cy="7.5" r="2" stroke="#7a6e63" stroke-width="1.1"/><path d="M4.5 2.5 L5.5 1 L8.5 1 L9.5 2.5" stroke="#7a6e63" stroke-width="1" stroke-linecap="round"/></svg>
+          写真
+        </div>
+        <label for="photo-input" class="photo-label-btn">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="3" width="16" height="12" rx="2" stroke="#7a6e63" stroke-width="1.2"/><circle cx="9" cy="9" r="2.5" stroke="#7a6e63" stroke-width="1.1"/><path d="M5.5 3L6.5 1.5H11.5L12.5 3" stroke="#7a6e63" stroke-width="1" stroke-linecap="round"/></svg>
+          写真を選ぶ（ライブラリまたは撮影）
+        </label>
+        <input type="file" id="photo-input" accept="image/*" onchange="handlePhotoSelect(this)" />
+        <div id="photo-warning" class="photo-warning">⚠️ この形式はブラウザで表示できない場合があります。<br/>JPEGに変換して再度選択してください。</div>
+        <div class="photo-preview-wrap">
+          <img id="photo-preview" class="photo-preview" alt="プレビュー" />
+        </div>
+      </div>
+      <!-- URL -->
+      <div class="form-group">
+        <label class="form-label" for="record-url">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.5 8.5L8.5 5.5" stroke="#7a6e63" stroke-width="1.2" stroke-linecap="round"/><path d="M3.5 7.5L2 9a2.12 2.12 0 0 0 3 3l1.5-1.5" stroke="#7a6e63" stroke-width="1.2" stroke-linecap="round"/><path d="M7.5 6.5L9 5a2.12 2.12 0 0 0-3-3L4.5 3.5" stroke="#7a6e63" stroke-width="1.2" stroke-linecap="round"/></svg>
+          URL
+        </label>
+        <input type="url" id="record-url" class="form-input" placeholder="https://..." />
+      </div>
+      <!-- メモ -->
+      <div class="form-group">
+        <label class="form-label" for="record-memo">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 11L2 12l1-4 8-8 3 3-8 8z" stroke="#7a6e63" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          一言メモ
+        </label>
+        <textarea id="record-memo" class="form-input" placeholder="この日感じたこと、気になったこと..."></textarea>
+      </div>
+      <!-- 保存 -->
+      <button id="btn-save" class="btn-save" onclick="saveRecord()">
+        <svg width="18" height="14" viewBox="0 0 18 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="0.5" y="0.5" width="17" height="13" rx="2.5" stroke="white" stroke-width="1.2"/><circle cx="5" cy="7" r="2.5" stroke="white" stroke-width="1"/><circle cx="13" cy="7" r="2.5" stroke="white" stroke-width="1"/><line x1="7.5" y1="7" x2="10.5" y2="7" stroke="white" stroke-width="1"/></svg>
+        保存する
+      </button>
+      <p class="save-success" id="save-success">✓ 記録しました！</p>
+      <p class="save-error" id="save-error">⚠️ 保存に失敗しました。写真のサイズを小さくするか、古い記録を削除してください。</p>
+    </div>
+  </div><!-- /screen-record -->
+
+  <!-- ========== SCREEN: SETTINGS ========== -->
+  <div id="screen-settings" class="screen">
+    <div class="settings-header">
+      <h2>設定</h2>
+    </div>
+    <div class="settings-body">
+      <div class="settings-section">
+        <h3>バックアップ</h3>
+        <button class="settings-btn" id="btn-export" onclick="exportData()">
+          📤 データを書き出す
+        </button>
+        <label for="import-file-input" class="settings-btn" id="btn-import-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          📥 データを読み込む
+        </label>
+        <input type="file" id="import-file-input" accept=".json,application/json" style="display:none;" onchange="importData(this)" />
+        <p id="import-result" style="font-size:12px;line-height:1.6;margin-top:8px;display:none;"></p>
+      </div>
+      <div class="settings-section">
+        <h3>データ管理</h3>
+        <button class="settings-btn" onclick="restoreSamples()">サンプルデータを復元</button>
+        <button class="settings-btn danger" onclick="confirmDeleteAll()">すべてのデータを削除</button>
+      </div>
+      <div class="settings-section">
+        <h3>このアプリについて</h3>
+        <p class="settings-desc">
+          <strong>いまここ手帳 β — Future Me</strong><br/>
+          好きを忘れないAI<br/><br/>
+          写真・URL・メモなどの記録をもとに、<br/>
+          過去の興味や人とのつながり、考え方をたどり、<br/>
+          積み重なった自分と もう一度つながるためのログアプリ。<br/><br/>
+          データはすべてこのデバイスに保存されます。<br/>
+          ログイン不要・クラウド保存なし。
+        </p>
+      </div>
+      <div class="settings-section">
+        <h3>外部アプリ</h3>
+        <a href="https://app02-two.vercel.app/" target="_blank" rel="noopener" style="text-decoration:none;">
+          <button class="settings-btn">あれなんだっけ？ を開く ↗</button>
+        </a>
+      </div>
+    </div>
+  </div><!-- /screen-settings -->
+
+  <!-- ========== BOTTOM NAV ========== -->
+  <nav id="bottom-nav">
+    <!-- タイムライン -->
+    <div class="nav-item active" id="nav-timeline" onclick="goTo('timeline')" role="button" tabindex="0" aria-label="タイムライン">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#10243f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="16" rx="2"/>
+        <line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="16" y1="2" x2="16" y2="6"/>
+        <line x1="3" y1="10" x2="21" y2="10"/>
+        <line x1="8" y1="14" x2="8.01" y2="14" stroke-width="2.5"/>
+        <line x1="12" y1="14" x2="12.01" y2="14" stroke-width="2.5"/>
+        <line x1="16" y1="14" x2="16.01" y2="14" stroke-width="2.5"/>
+      </svg>
+      <span>タイムライン</span>
+    </div>
+
+    <!-- 記録する（中央） -->
+    <div class="nav-item-center" onclick="goTo('record')" role="button" tabindex="0" aria-label="記録する">
+      <div class="nav-center-btn" id="nav-center-btn">
+        <!-- カセットテープ -->
+        <svg width="30" height="20" viewBox="0 0 30 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="0.75" y="0.75" width="28.5" height="18.5" rx="2.5" stroke="#ff5c93" stroke-width="1.4"/>
+          <circle cx="8.5" cy="10" r="3.5" stroke="#ff5c93" stroke-width="1.2"/>
+          <circle cx="21.5" cy="10" r="3.5" stroke="#ff5c93" stroke-width="1.2"/>
+          <circle cx="8.5" cy="10" r="1.2" fill="#ff5c93"/>
+          <circle cx="21.5" cy="10" r="1.2" fill="#ff5c93"/>
+          <line x1="12" y1="10" x2="18" y2="10" stroke="#ff5c93" stroke-width="1.2"/>
+          <line x1="3.5" y1="15" x2="26.5" y2="15" stroke="#ff5c93" stroke-width="0.9"/>
+        </svg>
+      </div>
+      <span class="nav-center-label" id="nav-center-label">記録する</span>
+    </div>
+
+    <!-- あれなんだっけ？ -->
+    <a href="https://app02-two.vercel.app/" target="_blank" rel="noopener" class="nav-item" id="nav-are" aria-label="あれなんだっけ？">
+      <img src="arenandakke.png" alt="" class="nav-comic-avatar" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 28 28%22><circle cx=%2214%22 cy=%2214%22 r=%2213%22 fill=%22%23f0d8c0%22 stroke=%22%23ccc%22 stroke-width=%221%22/><text x=%2214%22 y=%2219%22 text-anchor=%22middle%22 font-size=%2213%22>？</text></svg>'"/>
+      <span>あれなんだっけ？</span>
+    </a>
+
+    <!-- 設定 -->
+    <div class="nav-item" id="nav-settings" onclick="goTo('settings')" role="button" tabindex="0" aria-label="設定">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#10243f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      <span>設定</span>
+    </div>
+  </nav>
+
+</div><!-- /app -->
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ============================================================
+// APP STATE
+// ============================================================
+const STORAGE_KEY  = 'imakoko_records';
+const MEMORY_KEY   = 'futureMeMemory';
+const FEEDBACK_KEY = 'futureMeFeedback';
+let photoDataUrl = null;
+
+// FutureMeアバター (線画SVG)
+const FUTURE_ME_SVG = `<svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="19" cy="19" r="19" fill="#fce8f0"/>
+  <!-- 顔 -->
+  <ellipse cx="19" cy="17" rx="7" ry="8" stroke="#10243f" stroke-width="1.2" fill="#fff8ef"/>
+  <!-- 目 -->
+  <ellipse cx="16.5" cy="15.5" rx="1" ry="1.2" fill="#10243f"/>
+  <ellipse cx="21.5" cy="15.5" rx="1" ry="1.2" fill="#10243f"/>
+  <!-- まつ毛 -->
+  <path d="M15 14.5 Q16.5 13.5 18 14.5" stroke="#10243f" stroke-width="0.8" fill="none"/>
+  <path d="M21 14.5 Q22.5 13.5 24 14.5" stroke="#10243f" stroke-width="0.8" fill="none"/>
+  <!-- 口 -->
+  <path d="M17 20 Q19 21.5 21 20" stroke="#10243f" stroke-width="1" stroke-linecap="round" fill="none"/>
+  <!-- 髪 -->
+  <path d="M12 17 Q11 10 19 9 Q27 10 26 17" stroke="#10243f" stroke-width="1.3" fill="#10243f" fill-opacity="0.12"/>
+  <!-- 体 -->
+  <path d="M13 26 Q14 23 19 23 Q24 23 25 26" stroke="#10243f" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+</svg>`;
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function goTo(screen) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + screen).classList.add('active');
+
+  // ナビの active 更新
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-item svg').forEach(el => el.setAttribute('stroke', '#10243f'));
+  const navEl = document.getElementById('nav-' + screen);
+  if (navEl) navEl.classList.add('active');
+
+  // 中央ボタン active
+  const centerBtn = document.getElementById('nav-center-btn');
+  const centerLabel = document.getElementById('nav-center-label');
+  if (screen === 'record') {
+    centerBtn.style.background = 'rgba(255,92,147,0.25)';
+    centerLabel.style.color = '#ff5c93';
+    centerLabel.style.opacity = '1';
+  } else {
+    centerBtn.style.background = '';
+    centerLabel.style.color = '';
+    centerLabel.style.opacity = '';
+  }
+
+  if (screen === 'timeline') renderTimeline();
+  window.scrollTo(0, 0);
+}
+
+// ============================================================
+// STORAGE
+// ============================================================
+function loadRecords() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  } catch(e) { return []; }
+}
+function saveRecords(records) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    return true;
+  } catch(e) {
+    console.error('localStorage 保存失敗:', e);
+    return false;
+  }
+}
+
+// ============================================================
+// STORAGE — MEMORY & FEEDBACK
+// ============================================================
+function loadMemory() {
+  try { return JSON.parse(localStorage.getItem(MEMORY_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+function saveMemory(memory) {
+  try { localStorage.setItem(MEMORY_KEY, JSON.stringify(memory)); return true; }
+  catch(e) { console.error('memory保存失敗:', e); return false; }
+}
+function loadFeedback() {
+  try { return JSON.parse(localStorage.getItem(FEEDBACK_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+function saveFeedback(feedback) {
+  try { localStorage.setItem(FEEDBACK_KEY, JSON.stringify(feedback)); return true; }
+  catch(e) { console.error('feedback保存失敗:', e); return false; }
+}
+
+// ============================================================
+// PHOTO
+// ============================================================
+const ACCEPTED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const HEIC_TYPES = ['image/heic', 'image/heif'];
+const MAX_WIDTH = 1200;
+const JPEG_QUALITY = 0.8;
+
+function handlePhotoSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const warning = document.getElementById('photo-warning');
+
+  // HEIC/HEIF チェック
+  const lowerName = file.name.toLowerCase();
+  const isHeic = HEIC_TYPES.includes(file.type) ||
+                 lowerName.endsWith('.heic') ||
+                 lowerName.endsWith('.heif');
+  if (isHeic) {
+    warning.classList.add('show');
+    input.value = '';
+    return;
+  } else {
+    warning.classList.remove('show');
+  }
+
+  // 対応形式チェック（JPEG/PNG/WebP）
+  const isAccepted = ACCEPTED_TYPES.includes(file.type) ||
+                     lowerName.endsWith('.jpg') ||
+                     lowerName.endsWith('.jpeg') ||
+                     lowerName.endsWith('.png') ||
+                     lowerName.endsWith('.webp');
+  if (!isAccepted) {
+    showToast('対応していない形式です。JPEG・PNG・WebPを選択してください。');
+    input.value = '';
+    return;
+  }
+
+  // FileReader で読み込み → Canvas で圧縮
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      // リサイズ計算
+      let w = img.width;
+      let h = img.height;
+      if (w > MAX_WIDTH) {
+        h = Math.round(h * MAX_WIDTH / w);
+        w = MAX_WIDTH;
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width  = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+
+      // JPEG に変換して保存
+      photoDataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+
+      const preview = document.getElementById('photo-preview');
+      preview.src = photoDataUrl;
+      preview.classList.add('show');
+    };
+    img.onerror = function() {
+      showToast('画像の読み込みに失敗しました。');
+      input.value = '';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ============================================================
+// SAVE RECORD
+// ============================================================
+function saveRecord() {
+  const date   = document.getElementById('record-date').value;
+  const url    = document.getElementById('record-url').value.trim();
+  const memo   = document.getElementById('record-memo').value.trim();
+  const photo  = photoDataUrl;
+
+  if (!date && !url && !memo && !photo) {
+    showToast('何か入力してから保存してください');
+    return;
+  }
+
+  const record = {
+    id: Date.now(),
+    date: date || new Date().toISOString().slice(0,10),
+    url,
+    memo,
+    photo,
+    futureMeLoading: true  // STEP3: AI生成を待機中
+  };
+
+  const records = loadRecords();
+  records.unshift(record);
+  const saved = saveRecords(records);
+
+  if (!saved) {
+    // 保存失敗 → エラーメッセージ表示
+    const errMsg = document.getElementById('save-error');
+    errMsg.classList.add('show');
+    setTimeout(() => errMsg.classList.remove('show'), 4000);
+    showToast('⚠️ 保存に失敗しました');
+    return;
+  }
+
+  // リセット
+  document.getElementById('record-date').value = '';
+  document.getElementById('record-url').value = '';
+  document.getElementById('record-memo').value = '';
+  document.getElementById('photo-preview').classList.remove('show');
+  document.getElementById('photo-preview').src = '';
+  document.getElementById('photo-warning').classList.remove('show');
+  photoDataUrl = null;
+  document.getElementById('photo-input').value = '';
+
+  const msg = document.getElementById('save-success');
+  msg.classList.add('show');
+  setTimeout(() => msg.classList.remove('show'), 2000);
+
+  showToast('記録しました！');
+  setTimeout(() => goTo('timeline'), 1200);
+}
+
+// ============================================================
+// FUTURE ME LOGIC
+// ============================================================
+const FUTURE_COLORS = ['yellow', 'blue', 'purple'];
+
+// キーワードマップ
+const KEYWORD_GROUPS = [
+  {
+    keys: ['認知症','補助金','介護','アプリ','高齢','福祉','ケア'],
+    template: (kw) => `この頃「${kw}」のことを考えていましたね。\n今も同じテーマに向き合っていますか？`
+  },
+  {
+    keys: ['AI','機械学習','Web3','ブロックチェーン','NFT','メタバース','講義','プログラミング','コード','エンジニア'],
+    template: (kw) => `「${kw}」に夢中だったあの頃。\n最近また取り組んでいることはありますか？`
+  },
+  {
+    keys: ['音楽','くるり','シティポップ','Jazz','ジャズ','プレイリスト','ライブ','コンサート','推し','バンド'],
+    template: (kw) => `この曲、今も聴いていますか？\n最近のお気に入りは変わりましたか？`
+  },
+  {
+    keys: ['友達','カフェ','展示会','イベント','飲み','ランチ','会った','集まり','パーティ'],
+    template: (kw) => `この時に会った人と、最近もつながっていますか？\nまた会いたい人はいましたか？`
+  },
+  {
+    keys: ['旅行','旅','観光','海外','国内','温泉','ホテル','景色'],
+    template: (kw) => `「${kw}」に行ったあの日。\nまた行きたいと思いますか？`
+  },
+  {
+    keys: ['本','読書','漫画','映画','ドラマ','アニメ','ゲーム'],
+    template: (kw) => `「${kw}」に夢中だったあの頃。\n今も続いていますか？`
+  }
+];
+
+function generateFutureMe(record) {
+  const text = ((record.memo || '') + ' ' + (record.url || '')).toLowerCase();
+
+  // URLのみ
+  if (record.url && !record.memo && !record.photo) {
+    return 'このURL、今見ても気になりますか？\nどんな理由で保存したか、覚えていますか？';
+  }
+  // 写真のみ
+  if (record.photo && !record.memo && !record.url) {
+    return 'この日の空気、覚えていますか？\n写真の向こうにいた人や場所を、思い出せますか？';
+  }
+
+  // キーワードマッチ
+  for (const group of KEYWORD_GROUPS) {
+    for (const kw of group.keys) {
+      if (text.includes(kw.toLowerCase())) {
+        return group.template(kw);
+      }
+    }
+  }
+
+  // デフォルト（日付から季節を出す）
+  const month = parseInt((record.date || '').slice(5,7), 10);
+  if (month >= 3 && month <= 5)  return 'この春の記録を今見ると、何を思い出しますか？\nあの頃の自分に、今の自分から一言送るとしたら？';
+  if (month >= 6 && month <= 8)  return 'あの夏の日のこと、覚えていますか？\n今年の夏は、何か新しいことを始めてみましたか？';
+  if (month >= 9 && month <= 11) return 'この秋の記録を今見ると、何を思い出しますか？\nあの頃と今で、変わったことはありますか？';
+  return 'この記録を今見ると、何を思い出しますか？\n過去の自分から、今の自分へ一言届けましょう。';
+}
+
+// ============================================================
+// MEMORY — RENDER & ORGANIZE
+// ============================================================
+
+/**
+ * タイムライン上部のメモリーエリアを描画する
+ */
+function renderMemoryArea() {
+  const memory = loadMemory();
+  const listEl = document.getElementById('memory-list');
+  if (!listEl) return;
+
+  listEl.innerHTML = '';
+  if (memory.length === 0) {
+    listEl.innerHTML = '<li class="memory-empty">まだ記憶がありません。記録を積み重ねて「記憶を整理する」を押してみましょう。</li>';
+  } else {
+    memory.forEach(item => {
+      const li = document.createElement('li');
+      li.className = 'memory-item';
+      li.textContent = item.theme;
+      listEl.appendChild(li);
+    });
+  }
+}
+
+/**
+ * 「🧠 記憶を整理する」ボタン押下時
+ * 直近10件の記録 + 現在のメモリーをAPIに渡して再整理する
+ */
+async function organizeMemory() {
+  const btn = document.getElementById('btn-organize-memory');
+  if (!btn) return;
+
+  btn.disabled = true;
+  btn.textContent = '🧠 整理中...';
+
+  const allRecords = loadRecords();
+  const currentMemory = loadMemory();
+
+  const recentEntries = allRecords
+    .slice(0, 10)
+    .map(r => ({ date: r.date, memo: r.memo, url: r.url }));
+
+  try {
+    const res = await fetch('/api/organize-memory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentMemory, recentEntries })
+    });
+
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+
+    if (Array.isArray(data.themes) && data.themes.length > 0) {
+      saveMemory(data.themes);
+      renderMemoryArea();
+      showToast('🧠 記憶を整理しました（' + data.themes.length + '件）');
+    } else {
+      showToast('テーマが見つかりませんでした。記録を追加してから試してください。');
+    }
+  } catch (err) {
+    console.warn('organize-memory error:', err.message || err);
+    showToast('整理に失敗しました。しばらくしてから再試行してください。');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🧠 記憶を整理する';
+  }
+}
+
+// ============================================================
+// FEEDBACK
+// ============================================================
+
+/**
+ * フィードバックUI（👍/🤔）をFuture Meボックスに追加する
+ * @param {number} entryId - 記録ID
+ * @param {HTMLElement} container - .future-me-contentのel
+ */
+function renderFeedbackUI(entryId, container) {
+  // 既存フィードバック確認
+  const allFeedback = loadFeedback();
+  const existing = allFeedback.find(f => f.entryId === entryId);
+
+  const feedbackRow = document.createElement('div');
+  feedbackRow.className = 'fm-feedback-row';
+  feedbackRow.id = 'fb-row-' + entryId;
+
+  const doneEl = document.createElement('div');
+  doneEl.className = 'fm-feedback-done' + (existing ? ' show' : '');
+  doneEl.id = 'fb-done-' + entryId;
+  doneEl.textContent = existing
+    ? (existing.reaction === 'good' ? '👍 しっくりきた と記録済み' : '🤔 ちょっと違う と記録済み')
+    : '';
+
+  if (existing) {
+    container.appendChild(doneEl);
+    return;
+  }
+
+  // 👍 ボタン
+  const goodBtn = document.createElement('button');
+  goodBtn.className = 'fm-feedback-btn';
+  goodBtn.id = 'fb-good-' + entryId;
+  goodBtn.innerHTML = '👍 しっくりきた';
+  goodBtn.onclick = () => submitFeedback(entryId, 'good', null);
+
+  // 🤔 ボタン
+  const missBtn = document.createElement('button');
+  missBtn.className = 'fm-feedback-btn';
+  missBtn.id = 'fb-miss-' + entryId;
+  missBtn.innerHTML = '🤔 ちょっと違う';
+  missBtn.onclick = () => {
+    const reasonsEl = document.getElementById('fb-reasons-' + entryId);
+    if (reasonsEl) reasonsEl.classList.toggle('show');
+  };
+
+  feedbackRow.appendChild(goodBtn);
+  feedbackRow.appendChild(missBtn);
+  container.appendChild(feedbackRow);
+
+  // 「ちょっと違う」理由選択肢
+  const MISS_REASONS = ['表面的', '私らしくない', '過去とのつながりが弱い', '具体性が足りない', '少し説教っぽい', 'その他'];
+  const reasonsEl = document.createElement('div');
+  reasonsEl.className = 'fm-miss-reasons';
+  reasonsEl.id = 'fb-reasons-' + entryId;
+
+  MISS_REASONS.forEach(reason => {
+    const label = document.createElement('label');
+    label.className = 'fm-miss-label';
+    label.htmlFor = 'fb-cb-' + entryId + '-' + reason;
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.id = 'fb-cb-' + entryId + '-' + reason;
+    cb.value = reason;
+    cb.onchange = () => label.classList.toggle('checked', cb.checked);
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(reason));
+    reasonsEl.appendChild(label);
+  });
+
+  // 送信テキストリンク
+  const submitLink = document.createElement('button');
+  submitLink.className = 'fm-reason-submit';
+  submitLink.textContent = '送信する';
+  submitLink.onclick = () => {
+    const checked = Array.from(reasonsEl.querySelectorAll('input[type=checkbox]:checked'))
+      .map(cb => cb.value);
+    submitFeedback(entryId, 'miss', checked.length > 0 ? checked : null);
+  };
+  reasonsEl.appendChild(submitLink);
+  container.appendChild(reasonsEl);
+  container.appendChild(doneEl);
+}
+
+/**
+ * フィードバックを保存する
+ */
+function submitFeedback(entryId, reaction, reasons) {
+  const allFeedback = loadFeedback();
+  // 既存エントリを上書き
+  const idx = allFeedback.findIndex(f => f.entryId === entryId);
+  const entry = {
+    entryId,
+    reaction,
+    reason: reasons,
+    timestamp: new Date().toISOString()
+  };
+  if (idx !== -1) { allFeedback[idx] = entry; }
+  else { allFeedback.push(entry); }
+  saveFeedback(allFeedback);
+
+  // UIを更新
+  const row = document.getElementById('fb-row-' + entryId);
+  const reasonsEl = document.getElementById('fb-reasons-' + entryId);
+  const doneEl = document.getElementById('fb-done-' + entryId);
+
+  if (row) row.remove();
+  if (reasonsEl) reasonsEl.remove();
+  if (doneEl) {
+    doneEl.textContent = reaction === 'good' ? '👍 しっくりきた と記録済み' : '🤔 ちょっと違う と記録済み';
+    doneEl.classList.add('show');
+  }
+
+  showToast(reaction === 'good' ? '👍 フィードバックを記録しました' : '🤔 フィードバックを記録しました');
+}
+
+// ============================================================
+// TIMELINE RENDER
+// ============================================================
+function renderTimeline() {
+  // メモリーエリアを更新
+  renderMemoryArea();
+  const container = document.getElementById('timeline-container');
+  const emptyState = document.getElementById('empty-state');
+  const records = loadRecords();
+
+  // 既存のアイテムを削除（empty-state と timeline-line は保持）
+  Array.from(container.children).forEach(el => {
+    if (!el.classList.contains('timeline-line') && el.id !== 'empty-state') el.remove();
+  });
+
+  if (records.length === 0) {
+    emptyState.style.display = 'block';
+    return;
+  }
+  emptyState.style.display = 'none';
+
+  records.forEach((rec, idx) => {
+    const colorClass = FUTURE_COLORS[idx % FUTURE_COLORS.length];
+    // STEP3: AI生成済みコメントがあれば使用、ローディング中は待機テキスト、なければフォールバック
+    const isLoading = rec.futureMeLoading === true;
+    const fmText = isLoading
+      ? 'Future Meが考えています…'
+      : (rec.futureMe || generateFutureMe(rec));
+    const dateObj = rec.date ? new Date(rec.date + 'T00:00:00') : new Date();
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth()+1).padStart(2,'0');
+    const day   = String(dateObj.getDate()).padStart(2,'0');
+    const weekdays = ['日','月','火','水','木','金','土'];
+    const wday = weekdays[dateObj.getDay()];
+
+    const item = document.createElement('div');
+    item.className = 'timeline-item';
+
+    let photoHtml = rec.photo
+      ? `<img class="tl-card-photo" src="${escHtml(rec.photo)}" alt="記録写真" loading="lazy" />`
+      : '';
+    let urlHtml = rec.url
+      ? `<div class="tl-card-url"><a href="${escHtml(rec.url)}" target="_blank" rel="noopener">🔗 ${escHtml(rec.url)}</a></div>`
+      : '';
+    let memoHtml = rec.memo
+      ? `<div class="tl-card-memo">${escHtml(rec.memo)}</div>`
+      : '';
+
+    // メタアイコン
+    let metaHtml = '';
+    if (rec.photo) metaHtml += `<span class="tl-meta-item"><svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="#7a6e63" stroke-width="1.2"><rect x="1" y="2.5" width="12" height="9.5" rx="1.5"/><circle cx="7" cy="7.5" r="2"/></svg>写真</span>`;
+    if (rec.url)   metaHtml += `<span class="tl-meta-item"><svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="#7a6e63" stroke-width="1.2"><path d="M5.5 8.5L8.5 5.5"/><path d="M3.5 7.5L2 9a2.12 2.12 0 0 0 3 3l1.5-1.5"/><path d="M7.5 6.5L9 5a2.12 2.12 0 0 0-3-3L4.5 3.5"/></svg>URL</span>`;
+    if (rec.memo)  metaHtml += `<span class="tl-meta-item"><svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="#7a6e63" stroke-width="1.2"><path d="M3 11L2 12l1-4 8-8 3 3-8 8z"/></svg>メモ</span>`;
+
+    item.innerHTML = `
+      <div class="timeline-dot"></div>
+      <div class="timeline-date">
+        <div class="year">${year}</div>
+        <div class="day">${month}/${day}<span class="weekday">${wday}</span></div>
+      </div>
+      <div class="tl-card">
+        ${photoHtml}
+        <div class="tl-card-body">
+          ${metaHtml ? `<div class="tl-card-meta">${metaHtml}</div>` : ''}
+          ${memoHtml}
+          ${urlHtml}
+        </div>
+      </div>
+      <div class="future-me-box ${colorClass}">
+        <div class="future-me-avatar">${FUTURE_ME_SVG}</div>
+        <div class="future-me-content" id="fm-content-${rec.id}">
+          <div class="future-me-label">Future Meからのメッセージ</div>
+          <div class="future-me-text" id="fm-text-${rec.id}">${escHtml(fmText).replace(/\n/g,'<br/>')}</div>
+        </div>
+      </div>
+    `;
+
+    container.appendChild(item);
+
+    // フィードバックUIを追加
+    const fmContentEl = item.querySelector('#fm-content-' + rec.id);
+    if (fmContentEl) renderFeedbackUI(rec.id, fmContentEl);
+
+    // STEP3: ローディング中のカードはAPIを非同期呼び出し
+    if (isLoading) fetchAndUpdateFutureMe(rec.id);
+  });
+}
+
+// ============================================================
+// STEP3: FUTURE ME — AI API 呼び出し
+// ============================================================
+
+/**
+ * /api/future-me を呼び出してAIコメントを取得し、
+ * localStorage と DOM を更新する。失敗時はフォールバック。
+ */
+async function fetchAndUpdateFutureMe(recordId) {
+  const allRecords = loadRecords();
+  const rec = allRecords.find(r => r.id === recordId);
+  if (!rec) return;
+
+  // 直近10件（自分自身を除く）を recentEntries として送る（画像Base64は送らない）
+  const recentEntries = allRecords
+    .filter(r => r.id !== recordId)
+    .slice(0, 10)
+    .map(r => ({ date: r.date, memo: r.memo, url: r.url }));
+
+  // 人生テーマメモリーを取得
+  const memoryThemes = loadMemory().map(t => ({ theme: t.theme, strength: t.strength || 1 }));
+
+  const textEl = document.getElementById('fm-text-' + recordId);
+
+  try {
+    const res = await fetch('/api/future-me', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        currentEntry: { date: rec.date, memo: rec.memo, url: rec.url },
+        recentEntries,
+        memoryThemes
+      })
+    });
+
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (!data.comment) throw new Error('No comment in response');
+
+    // localStorage を更新（futureMeLoading削除、futureMe保存）
+    const records = loadRecords();
+    const i = records.findIndex(r => r.id === recordId);
+    if (i !== -1) {
+      records[i].futureMe = data.comment;
+      delete records[i].futureMeLoading;
+      saveRecords(records);
+    }
+
+    // DOM を更新
+    if (textEl) textEl.innerHTML = escHtml(data.comment).replace(/\n/g, '<br/>');
+
+  } catch (err) {
+    console.warn('Future Me API fallback:', err.message || err);
+
+    // フォールバック: 既存キーワードロジックを使用
+    const fallback = generateFutureMe(rec);
+
+    const records = loadRecords();
+    const i = records.findIndex(r => r.id === recordId);
+    if (i !== -1) {
+      records[i].futureMe = fallback;
+      delete records[i].futureMeLoading;
+      saveRecords(records);
+    }
+
+    if (textEl) textEl.innerHTML = escHtml(fallback).replace(/\n/g, '<br/>');
+  }
+}
+
+// ============================================================
+// SETTINGS — EXPORT / IMPORT
+// ============================================================
+
+/**
+ * エクスポート: localStorage の全記録を JSON ファイルとしてダウンロード
+ * ファイル名: imakoko_backup_YYYYMMDD.json
+ */
+function exportData() {
+  const records = loadRecords();
+  if (records.length === 0) {
+    showToast('書き出すデータがありません');
+    return;
+  }
+
+  const payload = {
+    version: 3,
+    exportedAt: new Date().toISOString(),
+    records: records,
+    futureMeMemory: loadMemory(),
+    futureMeFeedback: loadFeedback()
+  };
+
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+
+  // ファイル名: imakoko_backup_YYYYMMDD.json
+  const now = new Date();
+  const ymd = now.getFullYear().toString()
+    + String(now.getMonth() + 1).padStart(2, '0')
+    + String(now.getDate()).padStart(2, '0');
+  const filename = `imakoko_backup_${ymd}.json`;
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  showToast(`📤 ${filename} を書き出しました`);
+}
+
+/**
+ * インポート: JSON ファイルを読み込み、既存データに追加（上書きなし）
+ */
+function importData(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const resultEl = document.getElementById('import-result');
+  resultEl.style.display = 'none';
+  resultEl.style.color = '';
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const parsed = JSON.parse(e.target.result);
+
+      // バリデーション: records 配列があるか確認
+      let incoming = [];
+      if (Array.isArray(parsed)) {
+        // records 配列がそのままトップレベルの場合も受け入れる
+        incoming = parsed;
+      } else if (parsed && Array.isArray(parsed.records)) {
+        incoming = parsed.records;
+      } else {
+        throw new Error('records フィールドが見つかりません');
+      }
+
+      if (incoming.length === 0) {
+        showImportResult('読み込むデータが0件でした', false);
+        input.value = '';
+        return;
+      }
+
+      // 既存データとマージ（id 重複は除外して追加）
+      const current = loadRecords();
+      const existingIds = new Set(current.map(r => r.id));
+      const newRecords  = incoming.filter(r => r && r.id && !existingIds.has(r.id));
+
+      if (newRecords.length === 0) {
+        showImportResult('すべてのデータはすでに存在しています（追加なし）', false);
+        input.value = '';
+        return;
+      }
+
+      const merged = [...current, ...newRecords].sort((a, b) => b.id - a.id);
+      const saved  = saveRecords(merged);
+
+      if (!saved) {
+        showImportResult('保存に失敗しました。ストレージ容量を確認してください。', true);
+        input.value = '';
+        return;
+      }
+
+      // futureMeMemory を復元（存在する場合のみ・既存を上書き）
+      if (parsed && Array.isArray(parsed.futureMeMemory) && parsed.futureMeMemory.length > 0) {
+        saveMemory(parsed.futureMeMemory);
+      }
+      // futureMeFeedback を復元（存在する場合のみ・既存とマージ）
+      if (parsed && Array.isArray(parsed.futureMeFeedback) && parsed.futureMeFeedback.length > 0) {
+        const existingFb = loadFeedback();
+        const existingFbIds = new Set(existingFb.map(f => f.entryId));
+        const newFb = parsed.futureMeFeedback.filter(f => f && f.entryId && !existingFbIds.has(f.entryId));
+        saveFeedback([...existingFb, ...newFb]);
+      }
+
+      showImportResult(`✅ ${newRecords.length}件を追加しました`, false);
+      showToast(`📥 ${newRecords.length}件の記録を読み込みました`);
+      input.value = '';
+
+      // タイムラインへ移動して再描画
+      setTimeout(() => goTo('timeline'), 1000);
+
+    } catch (err) {
+      console.error('import error:', err);
+      showImportResult('バックアップファイルを読み込めませんでした', true);
+      input.value = '';
+    }
+  };
+  reader.onerror = function() {
+    showImportResult('バックアップファイルを読み込めませんでした', true);
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function showImportResult(msg, isError) {
+  const el = document.getElementById('import-result');
+  el.textContent = msg;
+  el.style.color  = isError ? '#d93b3b' : 'var(--text-sub)';
+  el.style.display = 'block';
+}
+
+// ============================================================
+// SETTINGS — DELETE / SAMPLES
+// ============================================================
+function confirmDeleteAll() {
+  if (confirm('すべてのデータを削除しますか？\nこの操作は元に戻せません。')) {
+    localStorage.removeItem(STORAGE_KEY);
+    showToast('データを削除しました');
+    goTo('timeline');
+  }
+}
+
+function restoreSamples() {
+  const samples = [
+    {
+      id: 1000001,
+      date: '2026-03-15',
+      url: '',
+      memo: '認知症アプリのアイデアをまとめた。補助金の申請も検討中。',
+      photo: null
+    },
+    {
+      id: 1000002,
+      date: '2026-02-08',
+      url: 'https://www.nhk.or.jp',
+      memo: 'くるり、シティポップ特集を聴きながら作業。最高だった。',
+      photo: null
+    },
+    {
+      id: 1000003,
+      date: '2025-11-20',
+      url: '',
+      memo: 'AI概論のイベントで知り合った人と話が弾んだ。また会いたい。',
+      photo: null
+    },
+    {
+      id: 1000004,
+      date: '2025-09-03',
+      url: 'https://app02-two.vercel.app/',
+      memo: '',
+      photo: null
+    }
+  ];
+  const current = loadRecords();
+  const merged = [...current, ...samples].sort((a,b) => b.id - a.id);
+  saveRecords(merged);
+  showToast('サンプルデータを復元しました');
+  goTo('timeline');
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function escHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+  // 今日の日付をデフォルトに
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('record-date').value = today;
+  // タイムライン描画
+  renderTimeline();
+});
+</script>
+</body>
+</html>
