@@ -611,16 +611,16 @@
     .shelf-panel.open {
       max-height: 600px;
       opacity: 1;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
     .shelf-panel-inner {
-      padding: 10px 0 6px;
+      padding: 8px 0 4px;
       border-top: 1px solid var(--border);
     }
 
     /* 棚（人生テーマ） */
     .shelf-item {
-      margin-bottom: 16px;
+      margin-bottom: 10px;
     }
     .shelf-title {
       font-size: 12px;
@@ -628,24 +628,25 @@
       color: var(--navy);
       opacity: 0.6;
       letter-spacing: 0.03em;
-      margin-bottom: 6px;
+      margin-bottom: 3px;
       padding: 0 2px;
     }
 
     /* 本（関心テーマ） */
     .book-list {
       list-style: none;
+      padding-left: 10px;
     }
     .book-item {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
-      padding: 6px 8px;
-      border-radius: 8px;
+      padding: 3px 6px;
+      border-radius: 6px;
       cursor: pointer;
       transition: background 0.15s;
       -webkit-tap-highlight-color: transparent;
-      margin-bottom: 2px;
+      margin-bottom: 1px;
     }
     .book-item:hover { background: rgba(255,92,147,0.06); }
     .book-item:active { background: rgba(255,92,147,0.12); }
@@ -665,7 +666,7 @@
 
     /* 棚区切り */
     .shelf-item + .shelf-item {
-      padding-top: 6px;
+      padding-top: 8px;
       border-top: 1px solid rgba(232,221,208,0.5);
     }
 
@@ -1002,13 +1003,18 @@ const DEFAULT_SHELF = [
     books: [
       {
         id: 'book-3',
-        title: 'ChatGPT',
-        keywords: ['ChatGPT','GPT','OpenAI','chatgpt','gpt']
+        title: 'AIとの対話',
+        keywords: ['ChatGPT','GPT','OpenAI','chatgpt','gpt','Gemini','Google AI','Bard','gemini','Claude','claude','LLM','llm','生成AI','AI','チャットAI']
       },
       {
         id: 'book-4',
-        title: 'Gemini',
-        keywords: ['Gemini','Google AI','Bard','gemini']
+        title: 'AIを使った制作',
+        keywords: ['Cursor','cursor','Copilot','copilot','v0','AI制作','AI生成','画像生成','コード生成','AIエディタ']
+      },
+      {
+        id: 'book-5',
+        title: 'Webサービス開発',
+        keywords: ['Vercel','vercel','Next.js','nextjs','Vite','vite','deploy','デプロイ','フロントエンド','React','react']
       }
     ]
   },
@@ -1017,7 +1023,7 @@ const DEFAULT_SHELF = [
     title: '忘れることと記憶を考え続けている',
     books: [
       {
-        id: 'book-5',
+        id: 'book-6',
         title: '認知症支援',
         keywords: ['認知症','物忘れ','記憶','介護','福祉','ケア','高齢']
       }
