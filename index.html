@@ -446,85 +446,111 @@
     }
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    /* ===== メモリーエリア ===== */
-    .memory-area {
-      margin: 0 20px 8px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 12px 14px 10px;
-    }
-    .memory-area-title {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--pink);
-      letter-spacing: 0.08em;
-      margin-bottom: 8px;
+    /* ===== タイムライン見出し（Future Meトグル統合）===== */
+    .section-label-row {
+      padding: 14px 20px 6px;
       display: flex;
       align-items: center;
-      gap: 5px;
+      justify-content: space-between;
+    }
+    .section-label-row .section-label {
+      padding: 0;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--pink);
+      letter-spacing: 0.1em;
+    }
+    /* Future Meトグルリンク */
+    .btn-memory-toggle {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 11px;
+      font-family: 'Noto Sans JP', sans-serif;
+      color: var(--text-sub);
+      letter-spacing: 0.03em;
+      padding: 2px 0;
+      opacity: 0.7;
+      transition: opacity 0.2s, color 0.2s;
+    }
+    .btn-memory-toggle:hover { opacity: 1; color: var(--navy); }
+
+    /* ===== メモリーアコーディオン ===== */
+    .memory-panel {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.3s ease, opacity 0.3s ease;
+      opacity: 0;
+      margin: 0 20px;
+    }
+    .memory-panel.open {
+      max-height: 400px;
+      opacity: 1;
+      margin-bottom: 6px;
+    }
+    .memory-panel-inner {
+      padding: 8px 0 6px;
+      border-top: 1px solid var(--border);
     }
     .memory-list {
       list-style: none;
-      margin-bottom: 10px;
-      min-height: 18px;
+      margin-bottom: 8px;
     }
     .memory-item {
       font-size: 12px;
-      color: var(--navy);
-      line-height: 1.7;
+      color: var(--text-sub);
+      line-height: 1.8;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 4px;
     }
-    .memory-item::before { content: '・'; color: var(--pink); font-weight: 700; }
+    .memory-item::before { content: '·'; color: var(--pink); }
     .memory-empty {
-      font-size: 12px;
+      font-size: 11px;
       color: var(--text-sub);
       font-style: italic;
+      opacity: 0.7;
     }
+    /* 記憶を更新ボタン — リンク風 */
     .btn-organize-memory {
-      display: flex;
-      align-items: center;
-      gap: 6px;
       background: none;
-      border: 1.5px solid var(--border);
-      border-radius: 20px;
-      padding: 6px 14px;
-      font-size: 12px;
+      border: none;
+      padding: 0;
+      font-size: 11px;
       font-family: 'Noto Sans JP', sans-serif;
-      font-weight: 600;
-      color: var(--navy);
+      color: var(--text-sub);
       cursor: pointer;
-      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      opacity: 0.6;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      transition: opacity 0.2s, color 0.2s;
     }
-    .btn-organize-memory:hover { background: #fff3ea; border-color: var(--pink); color: var(--pink); }
-    .btn-organize-memory:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-organize-memory:hover { opacity: 1; color: var(--navy); }
+    .btn-organize-memory:disabled { opacity: 0.3; cursor: not-allowed; }
 
     /* ===== フィードバックUI ===== */
     .fm-feedback-row {
       display: flex;
-      gap: 8px;
+      gap: 10px;
       margin-top: 8px;
       flex-wrap: wrap;
     }
+    /* リンク風テキストボタン */
     .fm-feedback-btn {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      background: rgba(255,255,255,0.7);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 5px 12px;
+      background: none;
+      border: none;
+      padding: 0;
       font-size: 12px;
       font-family: 'Noto Sans JP', sans-serif;
-      color: var(--navy);
+      color: var(--text-sub);
       cursor: pointer;
-      transition: background 0.2s, border-color 0.2s, transform 0.1s;
+      opacity: 0.65;
+      transition: opacity 0.15s, color 0.15s;
+      letter-spacing: 0.02em;
     }
-    .fm-feedback-btn:hover { background: #fff; transform: translateY(-1px); }
-    .fm-feedback-btn.selected-good { background: #e8fff0; border-color: #5dcc8a; color: #2a7a4a; }
-    .fm-feedback-btn.selected-miss { background: #fff5e0; border-color: #f0b429; color: #8a5e00; }
+    .fm-feedback-btn:hover { opacity: 1; color: var(--navy); }
+    .fm-feedback-btn.selected-good { color: #5dcc8a; opacity: 1; }
+    .fm-feedback-btn.selected-miss { color: #f0b429; opacity: 1; }
     .fm-miss-reasons {
       margin-top: 8px;
       display: none;
@@ -618,18 +644,24 @@
       </div>
     </header>
 
-    <!-- TIMELINE LABEL -->
-    <div class="section-label">タイムライン</div>
-
-    <!-- Future Meメモリーエリア -->
-    <div class="memory-area" id="memory-area">
-      <div class="memory-area-title">🧠 Future Meが覚えていること</div>
-      <ul class="memory-list" id="memory-list">
-        <li class="memory-empty">まだ記憶がありません。記録を積み重ねて「記憶を整理する」を押してみましょう。</li>
-      </ul>
-      <button class="btn-organize-memory" id="btn-organize-memory" onclick="organizeMemory()">
-        🧠 記憶を整理する
+    <!-- TIMELINE LABEL + Future Meトグル -->
+    <div class="section-label-row">
+      <span class="section-label">タイムライン</span>
+      <button class="btn-memory-toggle" id="btn-memory-toggle" onclick="toggleMemoryPanel()">
+        Future Meの記憶 ▼
       </button>
+    </div>
+
+    <!-- Future Meメモリーアコーディオン（初期：閉じる）-->
+    <div class="memory-panel" id="memory-panel">
+      <div class="memory-panel-inner">
+        <ul class="memory-list" id="memory-list">
+          <li class="memory-empty">まだ記憶がありません。</li>
+        </ul>
+        <button class="btn-organize-memory" id="btn-organize-memory" onclick="organizeMemory()">
+          記憶を更新
+        </button>
+      </div>
     </div>
 
     <!-- TIMELINE -->
@@ -1108,6 +1140,22 @@ function generateFutureMe(record) {
 // ============================================================
 
 /**
+ * Future Meの記憶パネルを開閉する
+ */
+function toggleMemoryPanel() {
+  const panel  = document.getElementById('memory-panel');
+  const toggle = document.getElementById('btn-memory-toggle');
+  if (!panel || !toggle) return;
+
+  const isOpen = panel.classList.toggle('open');
+  toggle.textContent = isOpen ? 'Future Meの記憶 ▲' : 'Future Meの記憶 ▼';
+
+  // 開いたときにメモリーを最新状態に更新
+  if (isOpen) renderMemoryArea();
+}
+
+
+/**
  * タイムライン上部のメモリーエリアを描画する
  * themes は string[] または {theme:string}[] のどちらでも対応
  */
@@ -1354,7 +1402,7 @@ function renderFeedbackUI(entryId, container) {
   doneEl.className = 'fm-feedback-done' + (existing ? ' show' : '');
   doneEl.id = 'fb-done-' + entryId;
   doneEl.textContent = existing
-    ? (existing.reaction === 'good' ? '👍 しっくりきた と記録済み' : '🤔 ちょっと違う と記録済み')
+    ? (existing.reaction === 'good' ? '♡ そうかも と記録済み' : '△ 少し違う と記録済み')
     : '';
 
   if (existing) {
@@ -1362,18 +1410,18 @@ function renderFeedbackUI(entryId, container) {
     return;
   }
 
-  // 👍 ボタン
+  // ♡ ボタン
   const goodBtn = document.createElement('button');
   goodBtn.className = 'fm-feedback-btn';
   goodBtn.id = 'fb-good-' + entryId;
-  goodBtn.innerHTML = '👍 しっくりきた';
+  goodBtn.innerHTML = '♡ そうかも';
   goodBtn.onclick = () => submitFeedback(entryId, 'good', null);
 
-  // 🤔 ボタン
+  // △ ボタン
   const missBtn = document.createElement('button');
   missBtn.className = 'fm-feedback-btn';
   missBtn.id = 'fb-miss-' + entryId;
-  missBtn.innerHTML = '🤔 ちょっと違う';
+  missBtn.innerHTML = '△ 少し違う';
   missBtn.onclick = () => {
     const reasonsEl = document.getElementById('fb-reasons-' + entryId);
     if (reasonsEl) reasonsEl.classList.toggle('show');
@@ -1442,19 +1490,21 @@ function submitFeedback(entryId, reaction, reasons) {
   if (row) row.remove();
   if (reasonsEl) reasonsEl.remove();
   if (doneEl) {
-    doneEl.textContent = reaction === 'good' ? '👍 しっくりきた と記録済み' : '🤔 ちょっと違う と記録済み';
+    doneEl.textContent = reaction === 'good' ? '♡ そうかも と記録済み' : '△ 少し違う と記録済み';
     doneEl.classList.add('show');
   }
 
-  showToast(reaction === 'good' ? '👍 フィードバックを記録しました' : '🤔 フィードバックを記録しました');
+  showToast(reaction === 'good' ? '♡ フィードバックを記録しました' : '△ フィードバックを記録しました');
 }
 
 // ============================================================
 // TIMELINE RENDER
 // ============================================================
 function renderTimeline() {
-  // メモリーエリアを更新
-  renderMemoryArea();
+  // メモリーパネルが開いているときのみ更新（閉じている場合は更新不要）
+  const panel = document.getElementById('memory-panel');
+  if (panel && panel.classList.contains('open')) renderMemoryArea();
+
   const container = document.getElementById('timeline-container');
   const emptyState = document.getElementById('empty-state');
   const records = loadRecords();
