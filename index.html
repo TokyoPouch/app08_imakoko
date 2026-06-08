@@ -670,6 +670,35 @@
       border-top: 1px solid rgba(232,221,208,0.5);
     }
 
+    /* 棚を再整理ボタン */
+    .btn-reorganize-shelf {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 11px;
+      font-family: 'Noto Sans JP', sans-serif;
+      color: var(--text-sub);
+      cursor: pointer;
+      opacity: 0.55;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      transition: opacity 0.2s, color 0.2s;
+      letter-spacing: 0.03em;
+      display: block;
+      margin: 6px 0 2px auto;
+    }
+    .btn-reorganize-shelf:hover  { opacity: 1; color: var(--navy); }
+    .btn-reorganize-shelf:disabled { opacity: 0.25; cursor: not-allowed; }
+    /* 再整理後の更新日時表示 */
+    .shelf-relations-updated {
+      font-size: 10px;
+      color: var(--text-sub);
+      opacity: 0.5;
+      text-align: right;
+      margin-top: 2px;
+      letter-spacing: 0.02em;
+    }
+
     /* ===== テーマ別タイムライン画面 ===== */
     .shelf-book-header {
       background: var(--bg);
@@ -991,10 +1020,11 @@
 // ============================================================
 // APP STATE
 // ============================================================
-const STORAGE_KEY  = 'imakoko_records';
-const MEMORY_KEY   = 'futureMeMemory';
-const FEEDBACK_KEY = 'futureMeFeedback';
-const SHELF_KEY    = 'imakokoShelf';
+const STORAGE_KEY         = 'imakoko_records';
+const MEMORY_KEY          = 'futureMeMemory';
+const FEEDBACK_KEY        = 'futureMeFeedback';
+const SHELF_KEY           = 'imakokoShelf';
+const SHELF_RELATIONS_KEY = 'shelfRelations'; // v3.31: Gemini意味的関連付け結果
 let photoDataUrl = null;
 let currentBookId = null; // 現在表示中のbook ID
 
@@ -1345,6 +1375,105 @@ function getShelf() {
 }
 
 // ============================================================
+// SHELF RELATIONS — STORAGE (v3.31)
+// ============================================================
+
+/**
+ * shelfRelations を localStorage から読み込む
+ * @returns {{ relations: Object.<string,number[]>, updatedAt: string }|null}
+ */
+function loadShelfRelations() {
+  try { return JSON.parse(localStorage.getItem(SHELF_RELATIONS_KEY) || 'null'); }
+  catch(e) { return null; }
+}
+
+/**
+ * shelfRelations を localStorage に保存する
+ * @param {{ relations: Object.<string,number[]>, updatedAt: string }} data
+ */
+function saveShelfRelations(data) {
+  try { localStorage.setItem(SHELF_RELATIONS_KEY, JSON.stringify(data)); return true; }
+  catch(e) { console.error('shelfRelations保存失敗:', e); return false; }
+}
+
+// ============================================================
+// SHELF — REORGANIZE（Gemini意味的関連付け）
+// ============================================================
+
+/**
+ * 「棚を再整理」ボタン押下時の処理
+ *
+ * Gemini に棚/本データ＋記録を送り、意味的な関連付けを取得して
+ * localStorage の shelfRelations に保存する。
+ *
+ * 送るデータ: 棚データ・記録（id/date/memo/url/futureMe のみ）
+ * 送らないデータ: 画像Base64
+ */
+async function reorganizeShelf() {
+  const btn = document.getElementById('btn-reorganize-shelf');
+  if (btn) { btn.disabled = true; btn.textContent = '整理中…'; }
+
+  const shelf = getShelf();
+  const allRecords = loadRecords();
+
+  // 送信するエントリー（画像Base64は送らない・直近50件）
+  const entries = allRecords.slice(0, 50).map(r => ({
+    id:        String(r.id),
+    date:      r.date   || '',
+    memo:      r.memo   || '',
+    url:       r.url    || '',
+    futureMe:  r.futureMe || ''
+  }));
+
+  // file:// 環境ではローカルフォールバックのみ
+  const isFileProtocol = window.location.protocol === 'file:';
+
+  if (!isFileProtocol) {
+    try {
+      const res = await fetch('/api/reorganize-shelf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shelfData: shelf, entries })
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+
+      if (data && data.relations && typeof data.relations === 'object') {
+        const toSave = {
+          relations:  data.relations,
+          updatedAt:  new Date().toISOString()
+        };
+        saveShelfRelations(toSave);
+        renderShelfPanel(); // ボタン下に最終更新日時を再描画
+        showToast('✨ 棚を再整理しました');
+        if (btn) { btn.disabled = false; btn.textContent = '棚を再整理'; }
+        return;
+      }
+      throw new Error('relations が空です');
+    } catch (err) {
+      console.warn('[reorganizeShelf] API失敗 → キーワードフォールバック:', err.message || err);
+    }
+  }
+
+  // ── ローカルフォールバック（file:// またはAPIエラー時）──
+  // キーワードマッチをベースに relations を構築する
+  const relations = {};
+  for (const shelfItem of shelf) {
+    for (const book of (shelfItem.books || [])) {
+      const matched = allRecords.filter(r => isRecordRelatedToBook(r, book));
+      if (matched.length > 0) {
+        relations[book.title] = matched.map(r => String(r.id));
+      }
+    }
+  }
+  const toSave = { relations, updatedAt: new Date().toISOString() };
+  saveShelfRelations(toSave);
+  renderShelfPanel();
+  showToast('棚を整理しました（ローカル判定）');
+  if (btn) { btn.disabled = false; btn.textContent = '棚を再整理'; }
+}
+
+// ============================================================
 // SHELF — PANEL TOGGLE
 // ============================================================
 
@@ -1424,6 +1553,25 @@ function renderShelfPanel() {
     shelfEl.appendChild(bookList);
     inner.appendChild(shelfEl);
   });
+
+  // ── 「棚を再整理」ボタン（好きの棚が開いているときのみ表示）──
+  const reorganizeBtn = document.createElement('button');
+  reorganizeBtn.className = 'btn-reorganize-shelf';
+  reorganizeBtn.id = 'btn-reorganize-shelf';
+  reorganizeBtn.textContent = '棚を再整理';
+  reorganizeBtn.onclick = reorganizeShelf;
+  inner.appendChild(reorganizeBtn);
+
+  // 最終更新日時を表示（あれば）
+  const existingRelations = loadShelfRelations();
+  if (existingRelations && existingRelations.updatedAt) {
+    const updatedEl = document.createElement('div');
+    updatedEl.className = 'shelf-relations-updated';
+    const d = new Date(existingRelations.updatedAt);
+    const label = `最終整理: ${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+    updatedEl.textContent = label;
+    inner.appendChild(updatedEl);
+  }
 }
 
 // ============================================================
@@ -1573,9 +1721,30 @@ function renderShelfBookTimeline(bookId) {
   });
 
   // ── 関連記録を抽出（localStorage構造は変更しない） ──────────
-  // isRecordRelatedToBook() でリアルタイム判定する
+  //
+  // 優先順位:
+  //   1. shelfRelations.relations に本タイトルが存在すれば、そのIDリストで絞り込む
+  //   2. shelfRelations がない / 本タイトルが未登録 → キーワード判定にフォールバック
   const records = loadRecords();
-  const matched = records.filter(r => isRecordRelatedToBook(r, targetBook));
+  let matched = [];
+
+  const shelfRelations = loadShelfRelations();
+  const relIds = shelfRelations
+    && shelfRelations.relations
+    && Array.isArray(shelfRelations.relations[targetBook.title])
+    ? shelfRelations.relations[targetBook.title]
+    : null;
+
+  if (relIds && relIds.length > 0) {
+    // shelfRelations 優先: IDで記録を引く（IDは数値/文字列どちらでも対応）
+    const idSet = new Set(relIds.map(String));
+    matched = records.filter(r => idSet.has(String(r.id)));
+    console.log(`[shelf-book] shelfRelations使用: ${targetBook.title} → ${matched.length}件`);
+  } else {
+    // フォールバック: リアルタイム キーワード判定
+    matched = records.filter(r => isRecordRelatedToBook(r, targetBook));
+    console.log(`[shelf-book] キーワード判定: ${targetBook.title} → ${matched.length}件`);
+  }
 
   // 件数を表示
   if (countEl) {
@@ -2173,8 +2342,9 @@ function exportData() {
     version: 3,
     exportedAt: new Date().toISOString(),
     records: records,
-    futureMeMemory: loadMemory(),
-    futureMeFeedback: loadFeedback()
+    futureMeMemory:  loadMemory(),
+    futureMeFeedback: loadFeedback(),
+    shelfRelations:  loadShelfRelations() // v3.31: 棚再整理結果を含める
   };
 
   const json = JSON.stringify(payload, null, 2);
@@ -2262,6 +2432,10 @@ function importData(input) {
         const existingFbIds = new Set(existingFb.map(f => f.entryId));
         const newFb = parsed.futureMeFeedback.filter(f => f && f.entryId && !existingFbIds.has(f.entryId));
         saveFeedback([...existingFb, ...newFb]);
+      }
+      // shelfRelations を復元（v3.31: 存在する場合のみ・既存を上書き）
+      if (parsed && parsed.shelfRelations && typeof parsed.shelfRelations.relations === 'object') {
+        saveShelfRelations(parsed.shelfRelations);
       }
 
       showImportResult(`✅ ${newRecords.length}件を追加しました`, false);
