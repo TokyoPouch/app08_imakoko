@@ -1031,63 +1031,7 @@ let currentBookId = null; // 現在表示中のbook ID
 // ============================================================
 // SHELF — DEFAULT DATA
 // ============================================================
-// ============================================================
-// DEFAULT_SHELF — 開発用テンプレート（本番表示には使用しない）
-// ※ このデータは localStorage に imakokoShelf が未保存の場合の
-//    UI参照用テンプレートとして保持する。
-//    本番では getShelf() が entries の有無で空配列を返すため
-//    このデータがユーザーに見えることはない。
-// ============================================================
-const DEFAULT_SHELF_TEMPLATE = [
-  {
-    id: 'shelf-1',
-    title: '文化を未来へ残したい',
-    books: [
-      {
-        id: 'book-1',
-        title: '日本の伝統布',
-        keywords: ['遠州織','久留女絣','播州織','反物','着物','伝統布','テキスタイル','染め','綿','刺繍']
-      },
-      {
-        id: 'book-2',
-        title: 'ミャンマーパンツ',
-        keywords: ['ミャンマー','mpants','民族衣装','ビルマ']
-      }
-    ]
-  },
-  {
-    id: 'shelf-2',
-    title: 'AIと人の関係を探求している',
-    books: [
-      {
-        id: 'book-3',
-        title: 'AIとの対話',
-        keywords: ['ChatGPT','GPT','OpenAI','chatgpt','gpt','Gemini','Google AI','Bard','gemini','Claude','claude','LLM','llm','生成AI','AI','チャットAI']
-      },
-      {
-        id: 'book-4',
-        title: 'AIを使った制作',
-        keywords: ['Cursor','cursor','Copilot','copilot','v0','AI制作','AI生成','画像生成','コード生成','AIエディタ']
-      },
-      {
-        id: 'book-5',
-        title: 'Webサービス開発',
-        keywords: ['Vercel','vercel','Next.js','nextjs','Vite','vite','deploy','デプロイ','フロントエンド','React','react']
-      }
-    ]
-  },
-  {
-    id: 'shelf-3',
-    title: '忘れることと記憶を考え続けている',
-    books: [
-      {
-        id: 'book-6',
-        title: '認知症支援',
-        keywords: ['認知症','物忘れ','記憶','介護','福祉','ケア','高齢']
-      }
-    ]
-  }
-];
+// DEFAULT_SHELF_TEMPLATE は完全に削除しました。
 
 // FutureMeアバター (線画SVG)
 const FUTURE_ME_SVG = `<svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1390,16 +1334,15 @@ function saveShelf(shelf) {
  * @returns {Array} 棚データ配列（空の場合は []）
  */
 function getShelf() {
-  // まず localStorage を参照
-  const saved = loadShelf();
-  if (saved !== null) return saved; // 明示的に保存されたデータを優先
-
-  // entries が空なら棚も空にする（テンプレートを本番表示しない）
+  // entries が空なら、古い imakokoShelf があっても必ず空にする
   const entries = loadRecords();
-  if (entries.length === 0) return [];
+  if (!entries || entries.length === 0) return [];
 
-  // entries がある場合のみテンプレートを参照可能にする
-  return DEFAULT_SHELF_TEMPLATE;
+  // entries がある場合のみ、localStorage の棚データを参照
+  const saved = loadShelf();
+  if (saved !== null) return saved;
+
+  return []; // サンプルデータは完全に削除したため、未設定時は空配列
 }
 
 // ============================================================
@@ -1771,55 +1714,25 @@ function renderShelfBookTimeline(book) {
   const shelfRelations = loadShelfRelations();
   const bookNameTrimmed = (book.title || '').trim();
 
-  console.log('[shelf-book] クリックされた本名:', JSON.stringify(bookNameTrimmed));
-  console.log('[shelf-book] shelfRelations raw:', JSON.stringify(shelfRelations));
-
-  // 形式A: { relations: { "本タイトル": ["id1",...] }, updatedAt: "..." }
-  // 形式B: { "本タイトル": ["id1",...] }  ← .relations なし
   let relIdsRaw = null;
 
   if (shelfRelations) {
-    // 形式A: shelfRelations.relations に本タイトルがあるか（trim済みで比較）
-    if (shelfRelations.relations && typeof shelfRelations.relations === 'object') {
-      // キー一覧からtrimして一致するものを探す
-      const matchedKey = Object.keys(shelfRelations.relations)
-        .find(k => k.trim() === bookNameTrimmed);
-      if (matchedKey !== undefined) {
-        relIdsRaw = shelfRelations.relations[matchedKey];
-      }
-    }
-    // 形式B: shelfRelations 直接に本タイトルがある場合（形式Aで見つからなかった場合のみ）
-    if (relIdsRaw === null) {
-      const matchedKey = Object.keys(shelfRelations)
-        .filter(k => k !== 'updatedAt' && k !== 'relations')
-        .find(k => k.trim() === bookNameTrimmed);
-      if (matchedKey !== undefined) {
-        relIdsRaw = shelfRelations[matchedKey];
-      }
+    if (shelfRelations.relations && Array.isArray(shelfRelations.relations[bookNameTrimmed])) {
+      relIdsRaw = shelfRelations.relations[bookNameTrimmed];
+    } else if (Array.isArray(shelfRelations[bookNameTrimmed])) {
+      relIdsRaw = shelfRelations[bookNameTrimmed];
     }
   }
 
-  console.log('[shelf-book] shelfRelations 対象IDリスト (raw):', JSON.stringify(relIdsRaw));
-
   if (Array.isArray(relIdsRaw) && relIdsRaw.length > 0) {
-    // ID を String に統一して Set を作成（数値/文字列の混在を吸収）
-    const relIdsStr = relIdsRaw.map(String);
-    const idSet = new Set(relIdsStr);
-    const recordIdsStr = records.map(r => String(r.id));
+    // ID を String に統一して Set を作成
+    const idSet = new Set(relIdsRaw.map(id => String(id)));
 
-    console.log('[shelf-book] shelfRelations IDリスト (String変換後):', JSON.stringify(relIdsStr));
-    console.log('[shelf-book] entries側 IDリスト (String変換後):', JSON.stringify(recordIdsStr));
-
+    // 記録のIDもString化して照合
     matched = records.filter(r => idSet.has(String(r.id)));
-
-    console.log('[shelf-book] shelfRelations優先 → 抽出件数:', matched.length,
-      '| 対象ID:', matched.map(r => String(r.id)));
   } else {
     // フォールバック: リアルタイム キーワード判定
-    console.log('[shelf-book] shelfRelationsに該当なし → キーワード判定にフォールバック');
     matched = records.filter(r => isRecordRelatedToBook(r, book));
-    console.log('[shelf-book] キーワード判定 → 抽出件数:', matched.length,
-      '| 対象ID:', matched.map(r => String(r.id)));
   }
 
   // 件数を表示
