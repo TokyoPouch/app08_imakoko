@@ -1253,6 +1253,16 @@ function saveRecord() {
 // ============================================================
 const FUTURE_COLORS = ['yellow', 'blue', 'purple'];
 
+function generateFutureMe(record) {
+  // URLのみ
+  if (record.url && !record.memo && !record.photo) {
+    return 'このURL、今見ても気になりますか？\nどんな理由で保存したか、覚えていますか？';
+  }
+  // 写真のみ
+  if (record.photo && !record.memo && !record.url) {
+    return 'この日の空気、覚えていますか？\n写真の向こうにいた人や場所を、思い出せますか？';
+  }
+
   // デフォルト（日付から季節を出す）
   const month = parseInt((record.date || '').slice(5,7), 10);
   if (month >= 3 && month <= 5)  return 'この春の記録を今見ると、何を思い出しますか？\nあの頃の自分に、今の自分から一言送るとしたら？';
