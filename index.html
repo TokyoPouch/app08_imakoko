@@ -1723,27 +1723,66 @@ function renderShelfBookTimeline(bookId) {
   // ── 関連記録を抽出（localStorage構造は変更しない） ──────────
   //
   // 優先順位:
-  //   1. shelfRelations.relations に本タイトルが存在すれば、そのIDリストで絞り込む
+  //   1. shelfRelations（形式A: .relations[本タイトル] / 形式B: [本タイトル]直接）
+  //      に該当するIDリストがあれば最優先で使用
   //   2. shelfRelations がない / 本タイトルが未登録 → キーワード判定にフォールバック
+  //   3. それでも0件 → 空状態を表示
   const records = loadRecords();
   let matched = [];
 
+  // ── shelfRelations の取得と形式の正規化 ─────────────────────
   const shelfRelations = loadShelfRelations();
-  const relIds = shelfRelations
-    && shelfRelations.relations
-    && Array.isArray(shelfRelations.relations[targetBook.title])
-    ? shelfRelations.relations[targetBook.title]
-    : null;
+  const bookNameTrimmed = (targetBook.title || '').trim();
 
-  if (relIds && relIds.length > 0) {
-    // shelfRelations 優先: IDで記録を引く（IDは数値/文字列どちらでも対応）
-    const idSet = new Set(relIds.map(String));
+  console.log('[shelf-book] クリックされた本名:', JSON.stringify(bookNameTrimmed));
+  console.log('[shelf-book] shelfRelations raw:', JSON.stringify(shelfRelations));
+
+  // 形式A: { relations: { "本タイトル": ["id1",...] }, updatedAt: "..." }
+  // 形式B: { "本タイトル": ["id1",...] }  ← .relations なし
+  let relIdsRaw = null;
+
+  if (shelfRelations) {
+    // 形式A: shelfRelations.relations に本タイトルがあるか（trim済みで比較）
+    if (shelfRelations.relations && typeof shelfRelations.relations === 'object') {
+      // キー一覧からtrimして一致するものを探す
+      const matchedKey = Object.keys(shelfRelations.relations)
+        .find(k => k.trim() === bookNameTrimmed);
+      if (matchedKey !== undefined) {
+        relIdsRaw = shelfRelations.relations[matchedKey];
+      }
+    }
+    // 形式B: shelfRelations 直接に本タイトルがある場合（形式Aで見つからなかった場合のみ）
+    if (relIdsRaw === null) {
+      const matchedKey = Object.keys(shelfRelations)
+        .filter(k => k !== 'updatedAt' && k !== 'relations')
+        .find(k => k.trim() === bookNameTrimmed);
+      if (matchedKey !== undefined) {
+        relIdsRaw = shelfRelations[matchedKey];
+      }
+    }
+  }
+
+  console.log('[shelf-book] shelfRelations 対象IDリスト (raw):', JSON.stringify(relIdsRaw));
+
+  if (Array.isArray(relIdsRaw) && relIdsRaw.length > 0) {
+    // ID を String に統一して Set を作成（数値/文字列の混在を吸収）
+    const relIdsStr = relIdsRaw.map(String);
+    const idSet = new Set(relIdsStr);
+    const recordIdsStr = records.map(r => String(r.id));
+
+    console.log('[shelf-book] shelfRelations IDリスト (String変換後):', JSON.stringify(relIdsStr));
+    console.log('[shelf-book] entries側 IDリスト (String変換後):', JSON.stringify(recordIdsStr));
+
     matched = records.filter(r => idSet.has(String(r.id)));
-    console.log(`[shelf-book] shelfRelations使用: ${targetBook.title} → ${matched.length}件`);
+
+    console.log('[shelf-book] shelfRelations優先 → 抽出件数:', matched.length,
+      '| 対象ID:', matched.map(r => String(r.id)));
   } else {
     // フォールバック: リアルタイム キーワード判定
+    console.log('[shelf-book] shelfRelationsに該当なし → キーワード判定にフォールバック');
     matched = records.filter(r => isRecordRelatedToBook(r, targetBook));
-    console.log(`[shelf-book] キーワード判定: ${targetBook.title} → ${matched.length}件`);
+    console.log('[shelf-book] キーワード判定 → 抽出件数:', matched.length,
+      '| 対象ID:', matched.map(r => String(r.id)));
   }
 
   // 件数を表示
